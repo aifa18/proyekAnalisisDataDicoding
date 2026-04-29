@@ -2,162 +2,225 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
-import os  
+import os
 
-# Set page configuration
-st.set_page_config(page_title="Olist E-Commerce Dashboard", layout="wide")
+# ==============================================================================
+# CONFIG & CUSTOM CSS (MINIMALIST & PROFESSIONAL)
+# ==============================================================================
+st.set_page_config(page_title="Olist E-Commerce Dashboard", page_icon="🛒", layout="wide")
 
-# Load Data
+st.markdown("""
+<style>
+    .main { background-color: #F8F9FA; }
+    .stMetric { background-color: #FFFFFF; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 5px solid #1A237E;}
+    h1, h2, h3 { color: #1A237E; font-family: 'sans-serif'; }
+</style>
+""", unsafe_allow_html=True)
+
+# ==============================================================================
+# LOAD DATA 
+# ==============================================================================
 @st.cache_data
 def load_data():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(base_dir, "main_data.csv")
-    
     df = pd.read_csv(file_path)
-    df['order_purchase_timestamp'] = pd.to_datetime(df['order_purchase_timestamp'])
+    df["order_purchase_timestamp"] = pd.to_datetime(df["order_purchase_timestamp"])
     return df
 
 all_df = load_data()
 
-all_df = load_data()
-
 # ==============================================================================
-# SIDEBAR: FILTER TANGGAL
+# SIDEBAR - KHUSUS FILTER
 # ==============================================================================
 with st.sidebar:
-    st.image("https://github.com/dicodingacademy/assets/raw/main/logo.png") # Logo Dicoding
-    st.title("Filter Rentang Waktu")
+    st.markdown("<h1 style='text-align: center;'>🛒 Olist Store</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>Business Intelligence Dashboard</p>", unsafe_allow_html=True)
+    st.markdown("---")
     
-    # Mengambil range tanggal minimum dan maksimum (jadikan date() agar formatnya bersih)
+    st.header("🔍 Filter Data")
+    
+    # 1. Filter Tanggal
     min_date = all_df["order_purchase_timestamp"].min().date()
     max_date = all_df["order_purchase_timestamp"].max().date()
+    date_range = st.date_input('📅 Rentang Waktu', min_value=min_date, max_value=max_date, value=[min_date, max_date])
 
-    # Menerima input dari date_input
-    date_range = st.date_input(
-        label='Rentang Waktu',
-        min_value=min_date,
-        max_value=max_date,
-        value=[min_date, max_date]
-    )
+    # 2. Filter Negara Bagian
+    states = sorted(all_df["customer_state"].dropna().unique())
+    selected_states = st.multiselect("📍 Negara Bagian (State)", options=states, default=[])
 
-# Cek apakah user sudah memilih 2 tanggal
+    # 3. Filter Tipe Pembayaran
+    payment_types = sorted(all_df["payment_type"].dropna().unique())
+    selected_payments = st.multiselect("💳 Tipe Pembayaran", options=payment_types, default=payment_types)
+
+# ==============================================================================
+# APLIKASI FILTER (LOGIKA ANTI-BUG)
+# ==============================================================================
+main_df = all_df.copy()
+
+# A. Terapkan Filter Tanggal
 if len(date_range) == 2:
     start_date, end_date = date_range
 else:
-    st.error("Silakan pilih rentang waktu (tanggal awal dan tanggal akhir) pada sidebar terlebih dahulu.")
-    st.stop() # Menghentikan eksekusi kode di bawahnya sementara sampai user selesai memilih
+    start_date, end_date = min_date, max_date
 
-# Filter data berdasarkan rentang tanggal
-main_df = all_df[(all_df["order_purchase_timestamp"].dt.date >= start_date) & 
-                 (all_df["order_purchase_timestamp"].dt.date <= end_date)]
+main_df = main_df[(main_df["order_purchase_timestamp"].dt.date >= start_date) & 
+                  (main_df["order_purchase_timestamp"].dt.date <= end_date)]
 
-# ==============================================================================
-# HEADER & METRICS
-# ==============================================================================
-st.title("📊 Olist E-Commerce Business Performance Dashboard")
+# B. Terapkan Filter Negara Bagian (Jika kosong, tampilkan SEMUA)
+if selected_states:
+    main_df = main_df[main_df["customer_state"].isin(selected_states)]
 
-col1, col2, col3 = st.columns(3)
-with col1:
-    total_revenue = main_df.payment_value.sum()
-    st.metric("Total Revenue", value=f"R$ {total_revenue:,.0f}")
-
-with col2:
-    total_orders = main_df.order_id.nunique()
-    st.metric("Total Orders", value=f"{total_orders:,}")
-
-with col3:
-    total_customers = main_df.customer_unique_id.nunique()
-    st.metric("Total Unique Customers", value=f"{total_customers:,}")
-
-st.markdown("---")
+# C. Terapkan Filter Tipe Pembayaran (Jika kosong, tampilkan SEMUA)
+if selected_payments:
+    main_df = main_df[main_df["payment_type"].isin(selected_payments)]
 
 # ==============================================================================
-# VISUALISASI 1: TREN PENDAPATAN
+# HEADER UTAMA & KPI METRICS
 # ==============================================================================
-st.subheader("📈 Tren Pendapatan Bulanan")
+st.title("📊 E-Commerce Performance Dashboard")
+st.markdown(f"**Periode Analisis:** {start_date} s/d {end_date}")
 
-monthly_rev_df = main_df.resample(rule='M', on='order_purchase_timestamp').agg({
-    "payment_value": "sum"
-}).reset_index()
-monthly_rev_df.rename(columns={"payment_value": "revenue"}, inplace=True)
-monthly_rev_df['month_year'] = monthly_rev_df['order_purchase_timestamp'].dt.strftime('%b %Y')
+col1, col2, col3, col4 = st.columns(4)
+with col1: st.metric("📦 Total Pesanan", f"{main_df['order_id'].nunique():,}")
+with col2: st.metric("💵 Total Pendapatan", f"R$ {main_df['payment_value'].sum():,.0f}")
+with col3: st.metric("👥 Total Pelanggan", f"{main_df['customer_unique_id'].nunique():,}")
+with col4: st.metric("💳 Avg. Transaksi", f"R$ {main_df['payment_value'].mean() if not main_df.empty else 0:,.2f}")
 
-fig, ax = plt.subplots(figsize=(16, 6))
-ax.plot(monthly_rev_df['month_year'], monthly_rev_df['revenue'], marker='o', linewidth=3, color="#1A237E")
-plt.xticks(rotation=45)
-ax.set_title("Total Revenue per Bulan (BRL)", loc="center", fontsize=18, fontweight='bold')
-plt.grid(axis='y', linestyle='--', alpha=0.4)
-sns.despine()
-st.pyplot(fig)
-
-with st.expander("💡 Lihat Insight Tren Pendapatan"):
-    st.write("""
-    - Terlihat tren pertumbuhan pendapatan yang positif secara keseluruhan.
-    - Lonjakan pendapatan paling tajam secara historis terjadi pada bulan **November**, yang menandakan tingginya aktivitas belanja selama periode kampanye akhir tahun (Black Friday).
-    """)
+st.markdown("<br>", unsafe_allow_html=True)
 
 # ==============================================================================
-# VISUALISASI 2: DEMOGRAFI PELANGGAN & RFM
+# TABS NAVIGASI
 # ==============================================================================
-col_left, col_right = st.columns(2)
+tab1, tab2, tab3 = st.tabs(["📈 Q1: Tren Pendapatan", "🗺️ Q2: Demografi Geografis", "👥 Q3: Analisis RFM"])
 
-with col_left:
-    st.subheader("🌍 Persebaran Pelanggan (Top 5 State)")
-    state_df = main_df.groupby("customer_state").customer_unique_id.nunique().reset_index()
-    state_df = state_df.sort_values("customer_unique_id", ascending=False).head(5)
-    
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.barplot(x="customer_unique_id", y="customer_state", data=state_df, palette="Blues_d", ax=ax)
-    ax.set_title("5 Negara Bagian dengan Pelanggan Terbanyak", fontsize=15, fontweight='bold')
-    sns.despine()
-    st.pyplot(fig)
-    
-    with st.expander("💡 Lihat Insight Geospasial"):
-        st.write("""
-        - Wilayah **Sao Paulo (SP)** mendominasi basis pelanggan dengan selisih yang sangat signifikan.
-        - Konsentrasi pelanggan di wilayah Tenggara Brazil menunjukkan perlunya memprioritaskan infrastruktur logistik di area tersebut.
-        """)
+# Helper Text untuk Data Kosong
+def show_empty_data_warning():
+    st.warning("⚠️ **Tidak ada transaksi pada rentang waktu atau kombinasi filter yang Anda pilih.**")
+    st.info("💡 **Solusi:** Silakan perlebar rentang kalender Anda di panel samping (pastikan berada di antara tahun 2016 - 2018).")
 
-with col_right:
-    st.subheader("⚠️ Segmentasi Pelanggan At-Risk")
-    
-    # Perbaikan RFM Sederhana untuk Dashboard
-    recent_date = main_df['order_purchase_timestamp'].max()
-    
-    # Grouping mencari tanggal max dan jumlah transaksi
-    rfm_df = main_df.groupby('customer_unique_id').agg({
-        'order_purchase_timestamp': 'max',
-        'order_id': 'nunique'
-    }).reset_index()
-    
-    # Ganti nama kolom
-    rfm_df.columns = ['id', 'max_order_timestamp', 'frequency']
-    
-    # Hitung selisih hari (recency) secara aman menggunakan dt.days
-    rfm_df['recency'] = (recent_date - rfm_df['max_order_timestamp']).dt.days
-    
-    # Logika perhitungan segmentasi
-    at_risk_count = rfm_df[(rfm_df['recency'] > 180) & (rfm_df['frequency'] > 1)].shape[0]
-    loyal_count = rfm_df[(rfm_df['frequency'] > 1)].shape[0] - at_risk_count
-    one_time_count = rfm_df[(rfm_df['frequency'] == 1)].shape[0]
+# ------------------------------------------------------------------------------
+# TAB 1: TREN PENDAPATAN
+# ------------------------------------------------------------------------------
+with tab1:
+    if not main_df.empty:
+        rev_2017 = all_df[all_df['order_purchase_timestamp'].dt.year == 2017]['payment_value'].sum()
+        rev_2018 = all_df[all_df['order_purchase_timestamp'].dt.year == 2018]['payment_value'].sum()
+        growth = ((rev_2018 - rev_2017) / rev_2017) * 100 if rev_2017 > 0 else 0
+        
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Pendapatan 2017", f"R$ {rev_2017:,.0f}")
+        c2.metric("Pendapatan 2018", f"R$ {rev_2018:,.0f}")
+        c3.metric("Pertumbuhan Tahunan", f"{growth:.2f}%", delta=f"+ R$ {rev_2018 - rev_2017:,.0f}")
+        
+        st.markdown("---")
+        
+        col_chart, col_insight = st.columns([7, 3])
+        with col_chart:
+            st.subheader("Tren Pendapatan Bulanan")
+            monthly_df = main_df.resample(rule='M', on='order_purchase_timestamp').agg({"payment_value": "sum"}).reset_index()
+            fig, ax = plt.subplots(figsize=(10, 4))
+            ax.plot(monthly_df["order_purchase_timestamp"], monthly_df["payment_value"], marker='o', linewidth=2.5, color="#1A237E")
+            plt.grid(axis='y', linestyle='--', alpha=0.3)
+            sns.despine()
+            st.pyplot(fig)
+            
+        with col_insight:
+            st.subheader("💡 Analisis Puncak & Rekomendasi")
+            st.info("""
+            **Peak Season Historis:**
+            Berdasarkan data, puncak transaksi tertinggi terjadi secara masif pada **November 2017** (bertepatan dengan momentum Black Friday).
+            """)
+            st.success("""
+            **Action Item:**
+            Tim Marketing disarankan mengalokasikan anggaran promosi maksimum pada Kuartal 4 (Q4), khususnya persiapan di bulan Oktober untuk menyambut lonjakan bulan November.
+            """)
+    else:
+        show_empty_data_warning()
 
-    # Menyiapkan data untuk chart
-    segment_data = pd.DataFrame({
-        'Segment': ['At-Risk', 'Loyal', 'One-time Shopper'],
-        'Count': [at_risk_count, loyal_count, one_time_count]
-    })
+# ------------------------------------------------------------------------------
+# TAB 2: DEMOGRAFI GEOGRAFIS
+# ------------------------------------------------------------------------------
+with tab2:
+    if not main_df.empty:
+        state_counts = main_df.groupby("customer_state").customer_unique_id.nunique().sort_values(ascending=False).head(10).reset_index()
+        top_5_pct = (state_counts['customer_unique_id'].head(5).sum() / main_df['customer_unique_id'].nunique()) * 100
+        
+        st.subheader("Distribusi Geografis Pelanggan (Top 10)")
+        c1, c2 = st.columns([6, 4])
+        
+        with c1:
+            fig, ax = plt.subplots(figsize=(9, 5))
+            colors = ["#1A237E" if i < 5 else "#B0BEC5" for i in range(len(state_counts))]
+            sns.barplot(x="customer_unique_id", y="customer_state", data=state_counts, palette=colors, hue="customer_state", legend=False, ax=ax)
+            ax.set_xlabel("Jumlah Pelanggan")
+            ax.set_ylabel("Negara Bagian (State)")
+            sns.despine()
+            st.pyplot(fig)
+            
+        with c2:
+            st.write("**Persentase Pangsa Pasar (Top 5)**")
+            fig, ax = plt.subplots(figsize=(6, 4))
+            top_5_data = state_counts.head(5)
+            pie_colors = ['#1A237E', '#3949AB', '#5C6BC0', '#7986CB', '#9FA8DA']
+            ax.pie(top_5_data['customer_unique_id'], labels=top_5_data['customer_state'], autopct='%1.1f%%', startangle=90, colors=pie_colors)
+            st.pyplot(fig)
+            
+            st.success(f"""
+            **Kesimpulan & Rekomendasi Logistik:**
+            Kelima negara bagian teratas menguasai **{top_5_pct:.1f}%** total basis pelanggan. Tim logistik diprioritaskan untuk membangun **Main Hub di SP (Sao Paulo)** untuk memangkas *freight value* secara signifikan.
+            """)
+    else:
+        show_empty_data_warning()
 
-    # Membuat Chart
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.barplot(x="Count", y="Segment", data=segment_data, palette=["#D32F2F", "#1976D2", "#B0BEC5"], ax=ax)
-    ax.set_title("Distribusi Segmen Pelanggan", fontsize=15, fontweight='bold')
-    sns.despine()
-    st.pyplot(fig)
-
-    with st.expander("💡 Lihat Insight RFM"):
-        st.write(f"""
-        - Terdapat **{at_risk_count:,} pelanggan At-Risk** yang perlu segera diberikan penawaran khusus (voucher/diskon).
-        - Mayoritas pelanggan masih berupa 'One-time Shoppers', menunjukkan tantangan besar dalam meningkatkan retensi.
-        """)
-
-st.caption('Copyright © 2026 | Proyek Analisis Data Olist E-Commerce')
+# ------------------------------------------------------------------------------
+# TAB 3: ANALISIS RFM
+# ------------------------------------------------------------------------------
+with tab3:
+    if not main_df.empty:
+        recent_date = main_df['order_purchase_timestamp'].max()
+        rfm_df = main_df.groupby('customer_unique_id').agg({
+            'order_purchase_timestamp': 'max',
+            'order_id': 'nunique',
+            'payment_value': 'sum'
+        }).reset_index()
+        
+        rfm_df.columns = ['id', 'max_order_timestamp', 'frequency', 'monetary']
+        rfm_df['recency'] = (recent_date - rfm_df['max_order_timestamp']).dt.days
+        
+        rfm_df['Segment'] = 'Biasa'
+        rfm_df.loc[(rfm_df['recency'] > 180) & (rfm_df['frequency'] > 1), 'Segment'] = 'At Risk'
+        rfm_df.loc[(rfm_df['recency'] <= 180) & (rfm_df['frequency'] > 1), 'Segment'] = 'Loyal'
+        rfm_df.loc[(rfm_df['frequency'] == 1), 'Segment'] = 'One-time Shopper'
+        
+        at_risk_df = rfm_df[rfm_df['Segment'] == 'At Risk']
+        
+        c1, c2, c3 = st.columns(3)
+        c1.metric("🚨 Pelanggan At-Risk", f"{at_risk_df.shape[0]:,}", delta="High Priority", delta_color="inverse")
+        c2.metric("✨ Pelanggan Loyal", f"{rfm_df[rfm_df['Segment'] == 'Loyal'].shape[0]:,}")
+        c3.metric("💰 Total Nilai At-Risk", f"R$ {at_risk_df['monetary'].sum():,.0f}")
+        
+        st.markdown("---")
+        col_chart, col_info = st.columns([6, 4])
+        
+        with col_chart:
+            st.write("**Distribusi Segmen Pelanggan**")
+            fig, ax = plt.subplots(figsize=(8, 4))
+            seg_order = ['At Risk', 'Loyal', 'One-time Shopper']
+            sns.countplot(y='Segment', data=rfm_df, order=seg_order, palette=["#D32F2F", "#1A237E", "#B0BEC5"], hue='Segment', legend=False, ax=ax)
+            ax.set_ylabel("")
+            sns.despine()
+            st.pyplot(fig)
+            
+        with col_info:
+            st.subheader("💡 Rekomendasi Tim CRM")
+            st.success(f"""
+            Terdapat potensi perputaran uang sebesar **R$ {at_risk_df['monetary'].sum():,.0f}** dari segmen At-Risk yang terancam *churn*. 
+            
+            Segera eksekusi **Win-Back Campaign** (Email Marketing) yang menawarkan voucher eksklusif berbatas waktu kepada pelanggan prioritas ini.
+            """)
+            
+            st.write("📋 **Top 5 Prioritas Dihubungi (Berdasarkan Monetary)**")
+            st.dataframe(at_risk_df.sort_values(by='monetary', ascending=False).head(5)[['id', 'recency', 'monetary']], hide_index=True)
+    else:
+        show_empty_data_warning()
