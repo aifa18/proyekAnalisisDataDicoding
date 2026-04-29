@@ -1,21 +1,39 @@
-# E-Commerce Data Analysis Dashboard 📊
+# Olist E-Commerce Analytics Dashboard ✨
 
-Proyek ini merupakan hasil akhir dari analisis data pada dataset publik E-Commerce Olist (Brazil). Proyek ini mencakup seluruh siklus analisis data mulai dari *Data Wrangling*, *Exploratory Data Analysis (EDA)*, hingga tahap *Visualization* dan pembuatan *Dashboard* interaktif menggunakan Streamlit.
+## Deskripsi
+Dashboard ini merupakan aplikasi visualisasi data interaktif yang dibangun menggunakan Streamlit. Aplikasi ini menyajikan analisis mendalam terhadap performa bisnis Olist Store (E-Commerce Brazil), yang mencakup tren pendapatan tahunan, sebaran geografis pelanggan untuk optimasi logistik, serta segmentasi pelanggan menggunakan analisis RFM (Recency, Frequency, Monetary) guna mendukung strategi retensi pelanggan.
 
-## 📌 Deskripsi Proyek
-Dashboard ini dirancang untuk memberikan wawasan strategis kepada pemangku kepentingan (stakeholders) melalui tiga pertanyaan bisnis utama (SMART):
-1. **Analisis Tren Pendapatan:** Membandingkan pertumbuhan revenue antara tahun 2017 dan 2018.
-2. **Analisis Geografis:** Mengidentifikasi konsentrasi pelanggan di berbagai negara bagian Brazil untuk optimasi logistik.
-3. **Segmentasi RFM:** Mengelompokkan pelanggan berdasarkan *Recency*, *Frequency*, dan *Monetary* untuk strategi retensi tim CRM.
+## Struktur Proyek
+- `dashboard/`: Direktori utama untuk aplikasi dashboard.
+    - `dashboard.py`: File kode sumber utama aplikasi Streamlit.
+    - `main_data.csv`: Dataset yang telah melalui proses pembersihan (Cleaned Data).
+- `data/`: Direktori yang berisi berkas dataset mentah (.csv).
+- `notebook.ipynb`: Dokumentasi lengkap proses Data Wrangling, Exploratory Data Analysis (EDA), hingga visualisasi data.
+- `README.md`: Panduan penggunaan dan informasi proyek.
+- `requirements.txt`: Daftar pustaka (library) Python yang diperlukan untuk menjalankan proyek.
+- `url.txt`: Berisi tautan (URL) dashboard jika sudah dideploy ke Streamlit Cloud.
 
-## 📂 Struktur Folder
-```text
-.
-├── dashboard/
-│   ├── dashboard.py       # Berkas utama aplikasi Streamlit
-│   └── main_data.csv      # Dataset yang telah dibersihkan (Cleaned Data)
-├── data/
-│   └── dataset asli dari publik E-Commerce Olist (Brazil)
-├── notebook.ipynb         # Dokumentasi lengkap proses analisis data
-├── README.md              # Dokumentasi proyek
-└── requirements.txt       # Daftar library Python yang dibutuhkan
+## Setup Environment - Anaconda
+```bash
+conda create --name main-ds python=3.9
+conda activate main-ds
+pip install -r requirements.txt
+```
+
+## Setup Environment - Shell/Terminal
+```bash
+mkdir proyek_analisis_data
+cd proyek_analisis_data
+pipenv install
+pipenv shell
+pip install -r requirements.txt
+```
+
+## Run Streamlit
+Untuk menjalankan dashboard secara lokal, pastikan Anda berada di root folder proyek, lalu jalankan perintah berikut:
+```bash
+streamlit run dashboard/dashboard.py
+```
+
+---
+**Azmi Naifah Iftinah** 
