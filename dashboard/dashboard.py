@@ -118,7 +118,7 @@ with tab1:
         col_chart, col_insight = st.columns([7, 3])
         with col_chart:
             st.subheader("Tren Pendapatan Bulanan")
-            monthly_df = main_df.resample(rule='M', on='order_purchase_timestamp').agg({"payment_value": "sum"}).reset_index()
+            monthly_df = main_df.resample(rule='ME', on='order_purchase_timestamp').agg({"payment_value": "sum"}).reset_index()
             fig, ax = plt.subplots(figsize=(10, 4))
             ax.plot(monthly_df["order_purchase_timestamp"], monthly_df["payment_value"], marker='o', linewidth=2.5, color="#1A237E")
             plt.grid(axis='y', linestyle='--', alpha=0.3)
